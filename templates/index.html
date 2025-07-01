@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>IR System UI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <style>
+        /* الألوان والتنسيقات العامة */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* خط مريح للقراءة */
+            background-color: #e9ecef; /* خلفية فاتحة جدًا للجسم */
+            color: #343a40; /* لون نص أساسي داكن */
+            display: flex;
+            padding: 20px;
+            min-height: 100vh; /* عشان يغطي ارتفاع الشاشة بالكامل */
+        }
+
+        h2, h4 {
+            color: #0056b3; /* لون أزرق جذاب للعناوين */
+            font-weight: 600; /* خط أثقل قليلاً للعناوين */
+        }
+
+        /* الشريط الجانبي (Sidebar) */
+        #sidebar {
+            width: 280px; /* عرض أكبر قليلاً للشريط الجانبي */
+            padding: 25px;
+            background-color: #ffffff; /* خلفية بيضاء للشريط الجانبي */
+            border-radius: 8px; /* حواف دائرية */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* ظل خفيف */
+            border-right: 1px solid #dee2e6; /* خط فاصل خفيف */
+            flex-shrink: 0;
+            margin-right: 25px; /* مسافة بين الشريط الجانبي والمحتوى الرئيسي */
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        /* تنسيق الأزرار والمحددات في الشريط الجانبي */
+        #datasetSelect, .form-control {
+            border-color: #007bff; /* إطار أزرق للتحكمات */
+            box-shadow: none; /* إزالة الظل الافتراضي لـ Bootstrap */
+        }
+
+        #datasetSelect:focus, .form-control:focus {
+            border-color: #0056b3; /* لون أغمق عند التركيز */
+            box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25); /* ظل خفيف عند التركيز */
+        }
+
+        #datasetSelect option {
+            background-color: #f8f9fa; /* خلفية فاتحة لخيار القائمة */
+            color: #343a40; /* لون نص داكن */
+            padding: 8px 12px;
+        }
+        #datasetSelect option:hover,
+        #datasetSelect option:checked {
+            background-color: #e9ecef; /* خلفية أفتح عند التحويم أو التحديد */
+            color: #0056b3; /* نص أزرق عند التحويم/التحديد */
+        }
+
+        .form-check-label {
+            color: #495057; /* لون للنصوص بجانب الراديو بوتون */
+        }
+
+        .btn-primary {
+            background-color: #007bff; /* لون أزرق أساسي للزر */
+            border-color: #007bff;
+            font-weight: 500;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease; /* حركة ناعمة */
+        }
+        .btn-primary:hover {
+            background-color: #0056b3; /* لون أزرق أغمق عند التحويم */
+            border-color: #0056b3;
+            transform: translateY(-1px); /* رفع الزر قليلاً عند التحويم */
+        }
+        .btn-primary:active {
+            transform: translateY(0); /* إعادة الزر لمكانه عند الضغط */
+        }
+
+        /* المحتوى الرئيسي (Main Content) */
+        #main-content {
+            flex-grow: 1;
+            padding: 25px;
+            background-color: #ffffff; /* خلفية بيضاء للمحتوى الرئيسي */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        hr {
+            border-top: 1px solid #ced4da; /* خط فاصل بلون رمادي فاتح */
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* قائمة النتائج */
+        .list-group-item {
+            background-color: #f8f9fa; /* خلفية فاتحة للنتائج */
+            border: 1px solid #dee2e6; /* إطار خفيف */
+            margin-bottom: 10px; /* مسافة بين العناصر */
+            border-radius: 6px; /* حواف دائرية للنتائج */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* ظل خفيف */
+            transition: transform 0.2s ease;
+        }
+        .list-group-item:hover {
+            transform: translateY(-2px); /* تأثير رفع بسيط عند التحويم */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .list-group-item b {
+            color: #0056b3; /* لون أزرق للعناوين الفرعية (ID, Score) */
+        }
+
+        .list-group-item pre {
+            background-color: #e9ecef; /* خلفية أغمق قليلاً لمحتوى النص */
+            border: 1px solid #ced4da; /* إطار خفيف للنص */
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.95em; /* حجم خط أصغر قليلاً للنص */
+            line-height: 1.5;
+            color: #495057;
+        }
+
+        /* رسائل الحالة (جاري البحث، لا توجد نتائج، خطأ) */
+        .list-group-item.text-center.text-muted {
+            background-color: #eaf3f8; /* خلفية فاتحة لأيقونة "جاري البحث" */
+            border-color: #cce5ff;
+        }
+        .list-group-item.text-danger {
+            background-color: #f8d7da; /* خلفية حمراء فاتحة للخطأ */
+            border-color: #f5c6cb;
+            color: #721c24; /* نص أحمر غامق */
+        }
+
+        /* التنسيقات للأيقونات (اختياري) */
+        .form-label, h2, h4 {
+            display: flex;
+            align-items: center;
+        }
+        .form-label svg, h2 svg, h4 svg {
+            margin-right: 8px; /* مسافة بين الأيقونة والنص */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h4 class="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#0056b3" class="bi bi-sliders" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1z"/>
+            </svg>
+            Options
+        </h4>
+
+        <div class="sidebar-section">
+            <label for="datasetSelect" class="form-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-folder" viewBox="0 0 16 16">
+                    <path d="M.5 3l.04.87a1.5 1.5 0 0 0-.36.98L.5 5h15l-.04-.87a1.5 1.5 0 0 0 .36-.98L15.5 3H.5zm.36 1.405A.5.5 0 0 1 1 4h14a.5.5 0 0 1 .14.005l.383 1.15a.5.5 0 0 1-.362.593L15.5 6H.5a.5.5 0 0 1-.362-.593zM2.5 7.15A.5.5 0 0 1 3 7h10a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5z"/>
+                </svg>
+                Select Dataset:
+            </label>
+            <select id="datasetSelect" class="form-select" required>
+                </select>
+        </div>
+
+        <div class="sidebar-section">
+            <label class="form-label">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-sliders" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3M2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8zm9.45 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3m-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1z"/>
+                </svg>
+                Representation Mode:
+            </label><br />
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeBasic" value="basic" checked />
+                <label class="form-check-label" for="modeBasic">TF-IDF</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeWord2Vec" value="word2vec" />
+                <label class="form-check-label" for="modeWord2Vec">Word2Vec (Embeddings)</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeHybrid" value="hybrid" />
+                <label class="form-check-label" for="modeHybrid">Hybrid</label>
+            </div>
+        </div>
+
+        <button type="submit" form="searchForm" class="btn btn-primary w-100 mt-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.085.12c.1.138.169.298.243.46.069.15.129.312.195.465.05.116.088.225.109.316.01.042.02.08.028.113.007.027.012.054.015.08A.5.5 0 0 1 12 12.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.366-.188c-.14-.236-.299-.481-.466-.75-.078-.129-.158-.26-.24-.392a6.5 6.5 0 0 0-.203-.263zM14 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
+            </svg>
+            Search
+        </button>
+    </div>
+
+    <div id="main-content">
+        <h2 class="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="#0056b3" class="bi bi-robot" viewBox="0 0 16 16">
+                <path d="M9.828 0a.5.5 0 0 1 .404.244l4.907 9.814a.5.5 0 0 1-.404.756H1.265a.5.5 0 0 1-.404-.756L5.768.244A.5.5 0 0 1 6.172 0zM4.992 5.626l-.427 1.583a.5.5 0 0 1-.402.327l-2.073-.391a.5.5 0 0 1-.327-.402L1.764 6.43a.5.5 0 0 1 .402-.327l2.073.391a.5.5 0 0 1 .327.402zm6.016 0l.427 1.583a.5.5 0 0 0 .402.327l2.073-.391a.5.5 0 0 0 .327-.402l-.39-2.073a.5.5 0 0 0-.402-.327l-2.073.391a.5.5 0 0 0-.327.402zM8 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm1-5h2V3H9zm-2 0H5V3h2zM3 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+            </svg>
+            IR System
+        </h2>
+
+        <form id="searchForm">
+            <div class="mb-3">
+                <label for="queryText" class="form-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-chat-dots" viewBox="0 0 16 16">
+                        <path d="M5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m4 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 1a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/>
+                        <path d="M2.165 15.803c.678.05.868.056 1.039.09.43.08.814.168 1.22.249.273.054.488.083.714.122.138.024.298.032.467.032.784 0 1.258-.042 1.948-.11c.71-.072 1.14-.142 1.49-.24.282-.073.543-.16.735-.256.248-.12.448-.252.628-.403.116-.098.22-.2.319-.313.134-.15.228-.272.296-.349.05-.055.088-.1.112-.132V9.5a1 1 0 0 0-1-1zm-1-9V.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5H8.625l-2.195 2.195c-.322.322-.515.542-.693.688-.137.112-.27.18-.363.228a.49.49 0 0 1-.16.059.49.49 0 0 1-.137-.03.5.5 0 0 1-.09-.038z"/>
+                    </svg>
+                    Enter Your Query:
+                </label>
+                <textarea id="queryText" class="form-control" rows="4" required placeholder="Type your search query here..." style="border-radius: 5px;"></textarea>
+            </div>
+        </form>
+
+        <hr />
+
+        <h4>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#0056b3" class="bi bi-list-columns-reverse" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M11.5 13.5a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm10-10a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm10 4a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zm-4 0a.5.5 0 0 1 0-1h1a.5.5 0 0 1 0 1zM2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1zm0 13V2h10v12z"/>
+            </svg>
+            Search Results:
+        </h4>
+        <ul id="resultsList" class="list-group mt-3">
+            </ul>
+    </div>
+
+    <script>
+        // دالة لجلب وتهيئة مجموعات البيانات
+        async function loadDatasets() {
+            try {
+                const res = await fetch('/datasets');
+                const data = await res.json();
+                const select = document.getElementById('datasetSelect');
+                select.innerHTML = ''; // مسح الخيارات القديمة
+                if (data.datasets && data.datasets.length > 0) {
+                    data.datasets.forEach(dataset => {
+                        const option = document.createElement("option");
+                        option.value = dataset.dataset_id;
+                        option.textContent = dataset.dataset_name;
+                        select.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement("option");
+                    option.value = "";
+                    option.textContent = "No datasets available";
+                    option.disabled = true;
+                    select.appendChild(option);
+                }
+            } catch (error) {
+                console.error('Error loading datasets:', error);
+                const select = document.getElementById('datasetSelect');
+                select.innerHTML = '<option value="" disabled>Failed to load datasets</option>';
+            }
+        }
+
+        // دالة للتعامل مع إرسال نموذج البحث
+        document.getElementById('searchForm').addEventListener('submit', async function (e) {
+            e.preventDefault(); // منع الإرسال الافتراضي للصفحة
+
+            const dataset_id = document.getElementById('datasetSelect').value;
+            const query = document.getElementById('queryText').value;
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            const resultsList = document.getElementById('resultsList');
+
+            resultsList.innerHTML = '<li class="list-group-item text-center text-muted">Searching...</li>'; // رسالة جاري البحث
+
+            if (!dataset_id) {
+                resultsList.innerHTML = '<li class="list-group-item text-danger">Please select a dataset.</li>';
+                return;
+            }
+            if (!query.trim()) {
+                resultsList.innerHTML = '<li class="list-group-item text-danger">Please enter a query.</li>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/search?dataset_id=${dataset_id}&query=${encodeURIComponent(query)}&mode=${mode}`);
+                const result = await response.json();
+
+                resultsList.innerHTML = ''; // مسح النتائج السابقة
+
+                if (result.documents && result.documents.length === 0) {
+                    resultsList.innerHTML = '<li class="list-group-item text-muted">No results found for your query.</li>';
+                } else if (result.documents) {
+                    result.documents.forEach(doc => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.innerHTML = `<b>ID:</b> ${doc.id}<br/><b>Score:</b> ${doc.score ? doc.score.toFixed(4) : 'N/A'}<br/><b>Content:</b> <pre style="white-space: pre-wrap; word-break: break-word; margin-top: 5px; background-color: #e9ecef; padding: 10px; border-radius: 5px; border: 1px solid #ced4da; font-size: 0.95em; line-height: 1.5; color: #495057;">${doc.text}</pre>`;
+                        resultsList.appendChild(li);
+                    });
+                } else {
+                    resultsList.innerHTML = `<li class="list-group-item text-danger">Error: ${result.message || 'An unexpected error occurred.'}</li>`;
+                }
+            } catch (error) {
+                console.error('Error during search:', error);
+                resultsList.innerHTML = `<li class="list-group-item text-danger">Failed to connect to the server or perform search. Error: ${error.message}</li>`;
+            }
+        });
+
+        // تشغيل دالة تحميل مجموعات البيانات عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', loadDatasets);
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# requirements.txt
+mysql-connector-python
+python-dotenv
+ir_datasets
+zstandard
+Flask
+nltk
+spacy
+datefinder
+pyspellchecker
+joblib
+scikit-learn
+
+
+# conda activate ir_env
+# python -m app.main
+# python -m app.main
+
+# pip install -r requirements.txt

@@ -1,26 +1,26 @@
 from sklearn.metrics import average_precision_score
 
-def mean_average_precision(qrels, predictions):
+def mean_average_precision(qrels, predictions, scores):
     total = 0.0
     count = 0
     for qid, docs in predictions.items():
         rel_docs = qrels.get(qid, {})
         if not rel_docs:
-            continue  # تجاهل الاستعلامات بدون صلة
+            continue
 
         y_true = [1 if doc in rel_docs else 0 for doc in docs]
+        y_score = scores.get(qid, [1]*len(docs))  # ← لازم تعطي السكور الحقيقي
 
         if sum(y_true) == 0:
-            continue  # لا يوجد أي وثيقة متوقعة من الوثائق ذات الصلة
+            continue
 
-        y_scores = [1] * len(y_true)  # كل الوثائق مفترض نفس الاحتمالية
         try:
-            total += average_precision_score(y_true, y_scores)
+            total += average_precision_score(y_true, y_score)
             count += 1
         except Exception as e:
-            print(f"⚠️ Skipping query {qid} due to error in AP: {e}")
-    return total / count if count else 0.0
+            print(f"⚠️ Error for query {qid}: {e}")
 
+    return total / count if count else 0.0
 
 def mean_reciprocal_rank(qrels, predictions):
     mrr = 0.0

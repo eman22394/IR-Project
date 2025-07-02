@@ -11,7 +11,6 @@ from app.evaluation.metrics import mean_average_precision, mean_reciprocal_rank,
 
 bp = Blueprint("bert_eval", __name__, url_prefix="/bert_eval")
 
-
 @bp.route("/offline", methods=["POST"])
 def bert_offline_eval():
     try:
@@ -23,7 +22,7 @@ def bert_offline_eval():
 
         print(f"🚀 Starting BERT evaluation for dataset {dataset_id}")
 
-        # تحميل البيانات
+        # تحميل الوثائق والاستعلامات والـ qrels
         docs = get_documents(dataset_id)
         queries = get_queries_from_qrels(dataset_id)
         qrels_raw = get_qrels(dataset_id)
@@ -31,7 +30,7 @@ def bert_offline_eval():
         doc_ids = [str(doc[0]) for doc in docs]
         query_ids_all = [str(q[0]) for q in queries]
 
-        # تجهيز qrels
+        # تجهيز qrels: {query_id: {doc_id: relevance}} مع تحويل المفاتيح إلى str
         qrels = {}
         for qid, doc_id, rel in qrels_raw:
             if rel > 0:
@@ -54,21 +53,20 @@ def bert_offline_eval():
             if qid in query_vectors and query_vectors[qid] is not None
         ]
         print(f"✅ Valid queries: {len(valid_queries)} / {len(queries)}")
+
         if not valid_queries:
             return jsonify({"error": "No valid queries with vectors found"}), 400
 
-        query_ids = [qid for qid, _ in valid_queries]
-        query_matrix = np.array([vec for _, vec in valid_queries], dtype=np.float32)
+        # مصفوفة وثائق كاملة
         doc_matrix = np.array([doc_vectors[doc_id] for doc_id in doc_ids], dtype=np.float32)
 
-        print("⚡ Computing cosine similarities in batch...")
-        similarity_matrix = cosine_similarity(query_matrix, doc_matrix)
-
+        # حساب التشابه استعلام باستعلام (لتقليل استهلاك الذاكرة)
         results = []
         predictions = {}
+        scores = {}
 
-        for i, query_id in enumerate(query_ids):
-            sim_row = similarity_matrix[i]
+        for i, (query_id, query_vec) in enumerate(valid_queries):
+            sim_row = cosine_similarity([query_vec], doc_matrix).flatten()
             top_indices = sim_row.argsort()[::-1][:10]
 
             top_matches = [
@@ -80,7 +78,8 @@ def bert_offline_eval():
                 for idx in top_indices
             ]
 
-            predictions[query_id] = [match["doc_id"] for match in top_matches]
+            predictions[str(query_id)] = [str(m["doc_id"]) for m in top_matches]
+            scores[str(query_id)] = [m["score"] for m in top_matches]
 
             results.append({
                 "query_index": i,
@@ -92,9 +91,10 @@ def bert_offline_eval():
                 print("📌 Relevant docs for query 10024:", qrels.get("10024"))
                 print("📌 Predicted docs for query 10024:", predictions.get("10024"))
 
+        # حساب المقاييس
         print("📊 Calculating evaluation metrics...")
         metrics = {
-            "MAP": round(mean_average_precision(qrels, predictions), 4),
+            "MAP": round(mean_average_precision(qrels, predictions, scores), 4),
             "MRR": round(mean_reciprocal_rank(qrels, predictions), 4),
             "P@10": round(precision_at_k(qrels, predictions, 10), 4),
             "R@100": round(recall_at_k(qrels, predictions, 100), 4)
@@ -102,6 +102,7 @@ def bert_offline_eval():
 
         print("✅ Evaluation complete. Saving results...")
 
+        # حفظ النتائج
         results_dir = "results"
         os.makedirs(results_dir, exist_ok=True)
 
@@ -126,7 +127,6 @@ def bert_offline_eval():
     except Exception as e:
         print("❌ Error:", e)
         return jsonify({"error": str(e)}), 500
-
 
 # # file: app/routes/word2vec_eval.py
 

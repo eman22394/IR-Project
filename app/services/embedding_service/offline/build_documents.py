@@ -3,7 +3,6 @@ import os
 import joblib
 import requests
 from sentence_transformers import SentenceTransformer
-from nltk.corpus import stopwords
 
 bp = Blueprint('bert_documents', __name__, url_prefix='/bert')
 
@@ -40,13 +39,11 @@ def build_bert():
         model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
 
         # ⚙️ إعداد التوجيهات وفلترة الكلمات
-        stop_words = set(stopwords.words('english'))
         prefix = "query: " if table_name == "queries" else "passage: "
 
         doc_vectors = {}
         for idx, (doc_id, tokens) in enumerate(processed_data.items(), 1):
-            filtered_tokens = [t for t in tokens if t.lower() not in stop_words]
-            text = prefix + " ".join(filtered_tokens)
+            text = prefix + " ".join(tokens)
             doc_vectors[doc_id] = model.encode(text, convert_to_numpy=True)
 
             if idx % 1000 == 0:
@@ -68,6 +65,7 @@ def build_bert():
     except Exception as e:
         print("❌ Error:", e)
         return jsonify({"error": str(e)}), 500
+    
 
 # from flask import Blueprint, request, jsonify
 # import os

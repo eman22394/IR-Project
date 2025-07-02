@@ -1,6 +1,5 @@
-
 from flask import Blueprint, request, jsonify
-from app.services.tfidf_service.utils import calculate_tfidf
+from app.services.tfidf_service.utils import calculate_tfidf, calculate_query_tfidf
 import joblib
 import os
 import requests
@@ -17,39 +16,53 @@ def build_tfidf_using_api():
         if not dataset_id or table_name not in ['documents', 'queries']:
             return jsonify({"error": "Invalid dataset_id or table_name"}), 400
 
-        # 🔁 استدعاء سيرفس المعالجة المسبقة
+        # 1️⃣ إرسال الطلب إلى خدمة المعالجة المسبقة
         preprocess_url = "http://127.0.0.1:5000/preprocess/bulk"
         response = requests.post(preprocess_url, json={
             "dataset_id": dataset_id,
-            "table_name": table_name,
-            # "limit" : 100
+            "table_name": table_name
         })
 
         if response.status_code != 200:
             return jsonify({"error": "Failed to preprocess data", "details": response.text}), 500
 
         result = response.json()
-        processed_data = result["processed_data"]
+        processed_data = result.get("processed_data", [])
 
         if not processed_data:
             return jsonify({"error": "No processed data returned"}), 404
 
-        # ✅ حساب TF-IDF
-        tfidf_matrix, vectorizer = calculate_tfidf(processed_data)
+        # 2️⃣ إنشاء TF-IDF
+        if table_name == "documents":
+            tfidf_matrix, vectorizer = calculate_tfidf(processed_data)
+            model_dir = f"data/tfidf/documents_{dataset_id}"
+            os.makedirs(model_dir, exist_ok=True)
+            joblib.dump(tfidf_matrix, os.path.join(model_dir, "tfidf_matrix.pkl"))
+            joblib.dump(vectorizer, os.path.join(model_dir, "vectorizer.pkl"))
 
-        # 💾 حفظ النتائج
-        model_dir = f"data/tfidf/{table_name}_{dataset_id}"
-        os.makedirs(model_dir, exist_ok=True)
-        joblib.dump(tfidf_matrix, os.path.join(model_dir, "tfidf_matrix.pkl"))
-        joblib.dump(vectorizer, os.path.join(model_dir, "vectorizer.pkl"))
+        elif table_name == "queries":
+            model_dir = f"data/tfidf/documents_{dataset_id}"
+            vectorizer_path = os.path.join(model_dir, "vectorizer.pkl")
 
+            if not os.path.exists(vectorizer_path):
+                return jsonify({"error": "Vectorizer not found. Build TF-IDF for documents first."}), 404
+
+            vectorizer = joblib.load(vectorizer_path)
+            tfidf_matrix = calculate_query_tfidf(processed_data, vectorizer)
+
+            query_dir = f"data/tfidf/queries{dataset_id}"
+            os.makedirs(query_dir, exist_ok=True)
+            joblib.dump(tfidf_matrix, os.path.join(query_dir, "tfidf_matrix.pkl"))
+
+        # 3️⃣ الرد الناجح
         return jsonify({
-            "message": f"✅ TF-IDF model built for dataset_id={dataset_id}",
+            "message": f"✅ TF-IDF model built for dataset_id={dataset_id}, table={table_name}",
             "num_documents": len(processed_data)
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # from flask import Blueprint, request, jsonify
 # from app.services.tfidf_service.utils import calculate_tfidf

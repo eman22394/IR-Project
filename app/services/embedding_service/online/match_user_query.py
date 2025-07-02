@@ -5,6 +5,7 @@ import requests
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from app.database.models import get_documents
+from nltk.corpus import stopwords
 
 bp = Blueprint('bert_query', __name__, url_prefix='/bert')
 
@@ -29,7 +30,7 @@ def match_user_query():
             return jsonify({"error": "No tokens returned from preprocess"}), 500
 
         # 📦 تحميل التمثيلات
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        model = SentenceTransformer('multi-qa-MiniLM-L6-cos-v1')
         model_dir = f"data/bert/documents_{dataset_id}"
         doc_vecs_path = os.path.join(model_dir, "doc_vectors.pkl")
 
@@ -38,7 +39,9 @@ def match_user_query():
 
         doc_vectors = joblib.load(doc_vecs_path)
 
-        query_vector = model.encode(" ".join(tokens), convert_to_numpy=True).reshape(1, -1)
+        filtered_tokens = [t for t in tokens if t.lower() not in stopwords.words('english')]
+        query_text = "query: " + " ".join(filtered_tokens)
+        query_vector = model.encode(query_text, convert_to_numpy=True).reshape(1, -1)
 
         doc_ids = list(doc_vectors.keys())
         doc_matrix = [doc_vectors[doc_id] for doc_id in doc_ids]

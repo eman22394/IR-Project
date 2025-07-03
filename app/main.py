@@ -13,7 +13,6 @@ from app.database.datasets_list import bp as dataset_list_bp
 from app.services.hybrid_service.offline.build_models import bp as hybrid_builder
 from app.services.hybrid_service.offline.hybrid_eval import bp as hybrid_eval
 from app.services.hybrid_service.online.match_user_query import bp as hybrid_query
-
 app = Flask(__name__, static_folder="../templates", static_url_path="")
 @app.route("/")
 def index():

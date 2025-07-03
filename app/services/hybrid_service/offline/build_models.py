@@ -1,9 +1,8 @@
-# file: app/services/hybrid_service/build_bert_tfidf_hybrid_vectors.py
 from flask import Blueprint, request, jsonify
 import os
 import joblib
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, hstack
 from app.database.models import get_documents, get_queries_from_qrels
 
 bp = Blueprint('bert_tfidf_hybrid', __name__, url_prefix='/hybrid')
@@ -13,32 +12,32 @@ def build_bert_tfidf_hybrid_vectors():
     try:
         data = request.json
         dataset_id = data.get('dataset_id')
-        table_name = data.get('table_name', 'documents')  # default to documents
+        table_name = data.get('table_name', 'documents')
 
         if not dataset_id or table_name not in ['documents', 'queries']:
             return jsonify({"error": "Missing or invalid 'dataset_id' or 'table_name'"}), 400
 
-        # 🛠️ Paths
         bert_path = f"data/bert/{table_name}_{dataset_id}/doc_vectors.pkl"
-        tfidf_path = f"data/tfidf/{table_name}_{dataset_id}/tfidf_matrix.pkl"
+        tfidf_path = f"data/tfidf/{table_name}{dataset_id}/tfidf_matrix.pkl"
         output_dir = f"data/hybrid_bert&tfidf/{table_name}_{dataset_id}"
         output_path = os.path.join(output_dir, "hybrid_vectors.pkl")
 
-        # ✅ Check files
         if not os.path.exists(bert_path):
             return jsonify({"error": "Missing BERT vectors file"}), 404
         if not os.path.exists(tfidf_path):
             return jsonify({"error": "Missing TF-IDF matrix file"}), 404
         os.makedirs(output_dir, exist_ok=True)
 
-        # ✅ Load vectors
-        bert_vectors = joblib.load(bert_path)  # dict {id: vector}
+        # Load BERT vectors
+        bert_vectors = joblib.load(bert_path)
+
+        # Load TF-IDF matrix
         tfidf_matrix = joblib.load(tfidf_path)
         if not isinstance(tfidf_matrix, csr_matrix):
             tfidf_matrix = csr_matrix(tfidf_matrix)
         tfidf_matrix = tfidf_matrix.astype(np.float32)
 
-        # ✅ Load IDs
+        # Get entry IDs
         if table_name == 'documents':
             entries = get_documents(dataset_id)
         else:
@@ -48,19 +47,14 @@ def build_bert_tfidf_hybrid_vectors():
         if len(entry_ids) != tfidf_matrix.shape[0]:
             return jsonify({"error": "Mismatch between TF-IDF rows and entries"}), 500
 
-        # ✅ Build hybrid vectors row by row
-        hybrid_vectors = []
-        for i, entry_id in enumerate(entry_ids):
-            if entry_id not in bert_vectors:
-                return jsonify({"error": f"Missing BERT vector for ID {entry_id}"}), 500
-            bert_vec = bert_vectors[entry_id].astype(np.float32)
-            tfidf_vec = tfidf_matrix[i].toarray().flatten()
-            hybrid = np.concatenate([bert_vec, tfidf_vec])
-            hybrid_vectors.append(hybrid)
+        # Build BERT matrix
+        bert_matrix = np.array([bert_vectors[entry_id].astype(np.float32) for entry_id in entry_ids])
+        bert_sparse = csr_matrix(bert_matrix)  # convert to sparse
 
-        hybrid_matrix = np.vstack(hybrid_vectors)
+        # Stack sparse BERT + TF-IDF
+        hybrid_matrix = hstack([bert_sparse, tfidf_matrix], format='csr')
 
-        # 💾 Save
+        # Save
         joblib.dump({
             "entry_ids": entry_ids,
             "hybrid": hybrid_matrix
@@ -72,7 +66,10 @@ def build_bert_tfidf_hybrid_vectors():
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
 
 # # file: app/services/hybrid_service/build_hybrid_vectors_endpoint.py
 # from flask import Blueprint, request, jsonify

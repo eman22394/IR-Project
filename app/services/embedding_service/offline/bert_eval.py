@@ -103,7 +103,7 @@ def bert_offline_eval():
         print("✅ Evaluation complete. Saving results...")
 
         # حفظ النتائج
-        results_dir = "results"
+        results_dir = "evaluation_results"
         os.makedirs(results_dir, exist_ok=True)
 
         results_path = os.path.join(results_dir, f"bert_results_{dataset_id}.txt")

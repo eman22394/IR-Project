@@ -8,11 +8,12 @@ def preprocess_text_endpoint():
     try:
         data = request.json
         text = data.get('text')
+        options = data.get('options', None)
         
         if not text:
             return jsonify({"error": "Missing 'text' field"}), 400
         
-        tokens = preprocess_text(text)
+        tokens = preprocess_text(text , options)
         
         return jsonify({
             "tokens": tokens,

@@ -78,13 +78,39 @@ def lemmatize_words(words):
     pos_tags = pos_tag(words)
     return [lemmatizer.lemmatize(w, get_wordnet_pos(pos)) for w, pos in pos_tags]
 
-def preprocess_text(text):
-    # text = correct_terms(text)
-    text = normalize_text(text)
-    # text = process_dates(text)
-    tokens = tokenize(text)
-    tokens = remove_stopwords(tokens)
-    tokens = lemmatize_words(tokens)
-    tokens = stem_words(tokens)
-    tokens = [t for t in tokens if t is not None]
-    return tokens
+def preprocess_text(text, options=None):
+    if options is None:
+        options = {
+            "normalize": True,
+            "spell_correction": False,
+            "process_dates": False,
+            "tokenize": True,
+            "remove_stopwords": True,
+            "lemmatize": True,
+            "stem": True
+        }
+
+    # if options.get("spell_correction"):
+    #     text = correct_terms(text)
+    
+    # if options.get("process_dates"):
+    #     text = process_dates(text)
+
+    if options.get("normalize"):
+        text = normalize_text(text)
+
+    if options.get("tokenize"):
+        tokens = tokenize(text)
+    else:
+        tokens = text.split()
+
+    if options.get("remove_stopwords"):
+        tokens = remove_stopwords(tokens)
+
+    if options.get("lemmatize"):
+        tokens = lemmatize_words(tokens)
+
+    if options.get("stem"):
+        tokens = stem_words(tokens)
+
+    return [t for t in tokens if t]

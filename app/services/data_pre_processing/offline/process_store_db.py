@@ -48,7 +48,6 @@ def preprocess_db_parallel():
 
             print(f"✅ Processed {min(idx * chunk_size, total)} / {total}")
 
-        # تحديث دفعة واحدة
         cursor.executemany(
             f"UPDATE {table_name} SET processed_text=%s WHERE {id_col}=%s",
             all_results

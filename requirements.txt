@@ -10,7 +10,7 @@ datefinder
 pyspellchecker
 joblib
 scikit-learn
-
+faiss-cpu
 
 # conda activate ir_env
 # python -m app.main

@@ -1,5 +1,3 @@
-# file: app/routes/mbert_query.py
-
 from flask import Blueprint, request, jsonify
 import os
 import joblib
@@ -20,7 +18,6 @@ def match_multilingual_query():
         if not dataset_id or not query_text:
             return jsonify({"error": "Missing 'dataset_id' or 'text'"}), 400
 
-        # 🔁 معالجة الاستعلام
         preprocess_url = "http://127.0.0.1:5000/preprocess/query"
         response = requests.post(preprocess_url, json={
             "text": query_text,
@@ -42,7 +39,6 @@ def match_multilingual_query():
         if not tokens:
             return jsonify({"error": "No tokens returned from preprocessing"}), 500
 
-        # تحميل التمثيلات
         model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         model_dir = f"data/mbert/documents_{dataset_id}"
         doc_vecs_path = os.path.join(model_dir, "doc_vectors.pkl")

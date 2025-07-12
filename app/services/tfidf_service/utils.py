@@ -1,4 +1,3 @@
-# tfidf_service/utils.py
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 def convert_str(corpus):
@@ -21,15 +20,6 @@ def calculate_tfidf(corpus):
     lowercase=False,             
     stop_words=None 
     )
-#     TfidfVectorizer(
-#     lowercase=True,
-#     stop_words='english',
-#     ngram_range=(1, 2),  # استخدام n-grams
-#     max_df=0.85,         # تجاهل الكلمات الشائعة جدًا
-#     min_df=2             # تجاهل الكلمات النادرة
-# )
-
-   
     documents = list(corpus.values())
     tfidf_matrix = vectorizer.fit_transform(documents)
     return tfidf_matrix, vectorizer
@@ -38,5 +28,5 @@ def calculate_tfidf(corpus):
 def calculate_query_tfidf(corpus, vectorizer):
     corpus = convert_str(corpus)
     queries = list(corpus.values())
-    tfidf_matrix = vectorizer.transform(queries)  # تحويل فقط
+    tfidf_matrix = vectorizer.transform(queries)  
     return tfidf_matrix

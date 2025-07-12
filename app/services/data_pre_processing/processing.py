@@ -1,5 +1,3 @@
-# app/preprocessing_service/processing.py
-
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
@@ -11,18 +9,8 @@ import datefinder
 
 stop_words = set(stopwords.words('english'))
 ps = PorterStemmer()
-# To correct spelling
 spell = SpellChecker()
-# Convert words to their original form
 lemmatizer = WordNetLemmatizer()
-# For text processing (to recognize entities such as dates)
-# example:
-# text = "Barack Obama was born on August 4, 1961 in Honolulu, Hawaii."
-# Output: Barack Obama → PERSON
-# August 4, 1961 → DATE
-# Honolulu → GPE
-# Hawaii → GPE
-# sp = spacy.load('en_core_web_sm') 
 
 def get_wordnet_pos(treebank_tag):
     if treebank_tag.startswith('J'):
@@ -36,7 +24,6 @@ def get_wordnet_pos(treebank_tag):
     else:
         return wordnet.NOUN
 
-# "I'm Happy." → "im happy"
 def normalize_text(text):
     return text.lower().replace('.', '').replace("'", '')
 
@@ -46,7 +33,7 @@ def correct_terms(text):
     terms = text.split()
     corrected_terms = []
     for term in terms:
-        if term[0].isupper():  # نحافظ على الأسماء الكبيرة مثل Sherlock، Holms
+        if term[0].isupper():  
             corrected_terms.append(term)
         else:
             corrected = spell.correction(term)
@@ -57,7 +44,6 @@ def correct_terms(text):
 def process_dates(text):
     matches = datefinder.find_dates(text)
     for match in matches:
-        # Replace the original date with the ISO 8601 formatted date
         text = text.replace(str(match.date()), match.strftime("%Y-%m-%d"))
     return text
 
@@ -66,8 +52,9 @@ def tokenize(text):
     return word_tokenize(text)
 
 def remove_stopwords(words):
-    filtered = [w for w in words if w.isalnum() and w not in stop_words and len(w) > 2]
+    filtered = [w for w in words if w.lower() not in stop_words and len(w) > 2]
     return filtered
+
 
 # Reducing words to their root or stem (Stemming).
 def stem_words(words):
@@ -87,14 +74,14 @@ def preprocess_text(text, options=None):
             "tokenize": True,
             "remove_stopwords": True,
             "lemmatize": True,
-            "stem": True
+            "stem": True,
         }
 
-    # if options.get("spell_correction"):
-    #     text = correct_terms(text)
+    if options.get("spell_correction"):
+        text = correct_terms(text)
     
-    # if options.get("process_dates"):
-    #     text = process_dates(text)
+    if options.get("process_dates"):
+        text = process_dates(text)
 
     if options.get("normalize"):
         text = normalize_text(text)

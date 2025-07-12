@@ -11,12 +11,11 @@ def build_tfidf_using_api():
     try:
         data = request.json
         dataset_id = data.get('dataset_id')
-        table_name = data.get('table_name', 'documents')
+        table_name = data.get('table_name', 'documents') 
 
         if not dataset_id or table_name not in ['documents', 'queries']:
             return jsonify({"error": "Invalid dataset_id or table_name"}), 400
 
-        # 1️⃣ إرسال الطلب إلى خدمة المعالجة المسبقة
         preprocess_url = "http://127.0.0.1:5000/preprocess/bulk"
         response = requests.post(preprocess_url, json={
             "dataset_id": dataset_id,
@@ -32,7 +31,6 @@ def build_tfidf_using_api():
         if not processed_data:
             return jsonify({"error": "No processed data returned"}), 404
 
-        # 2️⃣ إنشاء TF-IDF
         if table_name == "documents":
             tfidf_matrix, vectorizer = calculate_tfidf(processed_data)
             model_dir = f"data/tfidf/documents_{dataset_id}"
@@ -54,7 +52,6 @@ def build_tfidf_using_api():
             os.makedirs(query_dir, exist_ok=True)
             joblib.dump(tfidf_matrix, os.path.join(query_dir, "tfidf_matrix.pkl"))
 
-        # 3️⃣ الرد الناجح
         return jsonify({
             "message": f"✅ TF-IDF model built for dataset_id={dataset_id}, table={table_name}",
             "num_documents": len(processed_data)

@@ -7,7 +7,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from app.database.models import get_documents
 
 bp = Blueprint('mbert_query', __name__, url_prefix='/mbert')
-
+model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 @bp.route('/match_query', methods=['POST'])
 def match_multilingual_query():
     try:
@@ -39,7 +39,6 @@ def match_multilingual_query():
         if not tokens:
             return jsonify({"error": "No tokens returned from preprocessing"}), 500
 
-        model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         model_dir = f"data/mbert/documents_{dataset_id}"
         doc_vecs_path = os.path.join(model_dir, "doc_vectors.pkl")
 

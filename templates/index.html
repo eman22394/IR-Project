@@ -184,6 +184,10 @@
                 <input class="form-check-input" type="radio" name="mode" id="modeHybrid" value="hybrid" />
                 <label class="form-check-label" for="modeHybrid">Hybrid</label>
             </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="modeuse_vector_store" value="use_vector_store" />
+                <label class="form-check-label" for="modeuse_vector_store"> Use Vector Store</label>
+            </div>
         </div>
 
         <button type="submit" form="searchForm" class="btn btn-primary w-100 mt-3">
@@ -274,8 +278,9 @@
                 // تحديد الرابط المناسب حسب نوع التمثيل
                 let endpoint = '';
                 if (mode === 'basic') endpoint = '/tfidf/match_query';
-                else if (mode === 'bert') endpoint = '/bert/match_query';
+                else if (mode === 'bert') endpoint = '/mbert/match_query';
                 else if (mode === 'hybrid') endpoint = '/hybrid/match_query';
+                else if (mode === 'use_vector_store') endpoint = '/vector_store/match_query';
 
                 const response = await fetch(endpoint, {
                     method: 'POST',

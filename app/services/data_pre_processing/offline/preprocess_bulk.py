@@ -22,7 +22,6 @@ def preprocess_bulk_only():
         if table_name not in ['documents', 'queries']:
             return jsonify({"error": "Invalid table_name"}), 400
 
-        # 🛢️ الاتصال بقاعدة البيانات
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -39,12 +38,10 @@ def preprocess_bulk_only():
 
         print(f"🚀 Processing {len(rows)} rows (no storage)...")
 
-        # 🧠 استخدام Multi-Processing للتسريع
-        with Pool(processes=min(cpu_count(), 8)) as pool:
+        with Pool(processes=min(cpu_count(), 4)) as pool:
             results = pool.starmap(
                 process_row, [(row, id_col, options) for row in rows]
             )
-
         processed_data = {str(doc_id): tokens for doc_id, tokens in results}
 
         cursor.close()
@@ -55,6 +52,12 @@ def preprocess_bulk_only():
             "count": len(processed_data)
         })
 
+   
+
     except Exception as e:
-        print("❌ Error during bulk preprocessing:", e)
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print("❌ Error during bulk preprocessing:")
+        traceback.print_exc()  
+        return jsonify({"error": repr(e)}), 500
+
+

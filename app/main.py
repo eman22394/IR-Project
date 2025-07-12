@@ -15,7 +15,9 @@ from app.services.hybrid_service.offline.hybrid_eval import bp as hybrid_eval
 from app.services.hybrid_service.online.match_user_query import bp as hybrid_query
 from app.services.Multilingual_retrieval_system.offline.multilingual_build import bp as multilingual
 from app.services.Multilingual_retrieval_system.online.match_user_query import bp as multilingual_query
+from app.services.Multilingual_retrieval_system.offline.mbert_eval import bp as mbert_eval
 from app.services.vector_store_service.build_index  import bp as build_index
+from app.services.vector_store_service.match_user_query  import bp as match_user_query_use_vector
 
 
 app = Flask(__name__, static_folder="../templates", static_url_path="")
@@ -23,8 +25,10 @@ app = Flask(__name__, static_folder="../templates", static_url_path="")
 def index():
     return app.send_static_file("index.html")
 app.register_blueprint(build_index)
+app.register_blueprint(match_user_query_use_vector)
 app.register_blueprint(multilingual)
 app.register_blueprint(multilingual_query)
+app.register_blueprint(mbert_eval)
 app.register_blueprint(hybrid_eval)
 app.register_blueprint(hybrid_query)
 app.register_blueprint(word2vec_eval)

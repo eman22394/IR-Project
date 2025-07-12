@@ -3,7 +3,6 @@
 import ir_datasets
 import mysql.connector
 
-# إعدادات الاتصال
 db_config = {
     "host": "localhost",
     "user": "root",
@@ -13,11 +12,9 @@ db_config = {
 
 dataset_name = "beir/quora/dev"
 
-# الاتصال بقاعدة البيانات
 conn = mysql.connector.connect(**db_config)
 cursor = conn.cursor()
 
-# التأكد من وجود dataset_name في جدول datasets أو إضافته
 cursor.execute("SELECT dataset_id FROM datasets WHERE dataset_name = %s", (dataset_name,))
 row = cursor.fetchone()
 

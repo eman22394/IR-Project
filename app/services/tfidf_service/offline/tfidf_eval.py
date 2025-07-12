@@ -28,13 +28,11 @@ def tfidf_offline_eval():
         doc_ids = [str(doc[0]) for doc in docs]
         query_ids = [str(q[0]) for q in queries]
 
-        # qrels بشكل dict من dict { query_id: {doc_id: relevance, ...}, ... }
         qrels = {}
         for qid, doc_id, rel in qrels_raw:
             if rel > 0:
                 qrels.setdefault(str(qid), {})[str(doc_id)] = rel
 
-        # تحميل ملفات TF-IDF
         tfidf_docs_path = f"data/tfidf/documents_{dataset_id}/tfidf_matrix.pkl"
         tfidf_queries_path = f"data/tfidf/queries{dataset_id}/tfidf_matrix.pkl"
 
@@ -72,7 +70,6 @@ def tfidf_offline_eval():
                 "top_matches": top_matches
             })
 
-        # التحقق من qrels مقابل التوقعات
         for qid in qrels:
             if qid not in predictions:
                 print(f"⚠️ الاستعلام {qid} غير موجود في التوقعات!")

@@ -24,20 +24,16 @@ if row is None:
 else:
     dataset_id = row[0]
 
-# # جمل الإدخال مع dataset_id
 doc_insert = "INSERT IGNORE INTO documents (doc_id, text, dataset_id) VALUES (%s, %s, %s)"
 query_insert = "INSERT IGNORE INTO queries (query_id, text, dataset_id) VALUES (%s, %s, %s)"
 qrels_insert = "INSERT INTO qrels (query_id, doc_id, relevance, dataset_id) VALUES (%s, %s, %s, %s)"
 
-# تحميل مجموعة البيانات
 dataset = ir_datasets.load(dataset_name)
 
-# 1. تخزين المستندات
 print("⏳ جاري تخزين المستندات ...")
 for doc in dataset.docs_iter():
     cursor.execute(doc_insert, (doc.doc_id, doc.text, dataset_id))
 
-# 2. تخزين الاستعلامات
 print("⏳ جاري تخزين الاستعلامات ...")
 for query in dataset.queries_iter():
     cursor.execute(query_insert, (query.query_id, query.text, dataset_id))
@@ -54,4 +50,3 @@ conn.commit()
 cursor.close()
 conn.close()
 
-# print("✅ تم تخزين مجموعة beir/quora باستخدام ir_datasets بنجاح في قاعدة البيانات.")

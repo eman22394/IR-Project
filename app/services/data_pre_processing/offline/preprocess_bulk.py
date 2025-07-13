@@ -38,7 +38,7 @@ def preprocess_bulk_only():
 
         print(f"🚀 Processing {len(rows)} rows (no storage)...")
 
-        with Pool(processes=min(cpu_count(), 4)) as pool:
+        with Pool(processes=min(cpu_count(), 2)) as pool:
             results = pool.starmap(
                 process_row, [(row, id_col, options) for row in rows]
             )

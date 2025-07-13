@@ -3,7 +3,7 @@ from app.services.tfidf_service.utils import calculate_tfidf, calculate_query_tf
 import joblib
 import os
 import requests
-
+import json
 bp = Blueprint('tfidf_documents', __name__, url_prefix='/tfidf')
 
 @bp.route('/build', methods=['POST'])
@@ -11,11 +11,12 @@ def build_tfidf_using_api():
     try:
         data = request.json
         dataset_id = data.get('dataset_id')
-        table_name = data.get('table_name', 'documents') 
+        table_name = data.get('table_name', 'documents')
 
         if not dataset_id or table_name not in ['documents', 'queries']:
             return jsonify({"error": "Invalid dataset_id or table_name"}), 400
 
+        # 1️⃣ إرسال الطلب إلى خدمة المعالجة المسبقة
         preprocess_url = "http://127.0.0.1:5000/preprocess/bulk"
         response = requests.post(preprocess_url, json={
             "dataset_id": dataset_id,
@@ -31,10 +32,13 @@ def build_tfidf_using_api():
         if not processed_data:
             return jsonify({"error": "No processed data returned"}), 404
 
+        # 2️⃣ إنشاء TF-IDF
         if table_name == "documents":
             tfidf_matrix, vectorizer = calculate_tfidf(processed_data)
             model_dir = f"data/tfidf/documents_{dataset_id}"
             os.makedirs(model_dir, exist_ok=True)
+            doc_ids = list(processed_data.keys())
+            with open(os.path.join(model_dir, "doc_ids.json"), "w", encoding="utf-8") as f: json.dump(doc_ids, f)
             joblib.dump(tfidf_matrix, os.path.join(model_dir, "tfidf_matrix.pkl"))
             joblib.dump(vectorizer, os.path.join(model_dir, "vectorizer.pkl"))
 
@@ -51,7 +55,8 @@ def build_tfidf_using_api():
             query_dir = f"data/tfidf/queries{dataset_id}"
             os.makedirs(query_dir, exist_ok=True)
             joblib.dump(tfidf_matrix, os.path.join(query_dir, "tfidf_matrix.pkl"))
-
+     
+        # 3️⃣ الرد الناجح
         return jsonify({
             "message": f"✅ TF-IDF model built for dataset_id={dataset_id}, table={table_name}",
             "num_documents": len(processed_data)
@@ -59,7 +64,6 @@ def build_tfidf_using_api():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # from flask import Blueprint, request, jsonify
 # from app.services.tfidf_service.utils import calculate_tfidf

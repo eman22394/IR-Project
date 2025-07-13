@@ -29,7 +29,7 @@ def process_document(args):
 
 def build_inverted_index_parallel(docs):
     index = defaultdict(lambda: defaultdict(int))
-    with Pool(processes=min(cpu_count(), 8)) as pool:
+    with Pool(processes=min(cpu_count(), 4)) as pool:
         results = pool.map(process_document, docs)
 
     for result in results:
@@ -78,7 +78,7 @@ def run_index_builder(dataset_id):
     if dataset_id == 1:
         dataset_name = "antique"
         output_subdir = "antique"
-    elif dataset_id == 2:
+    elif dataset_id == 18:
         dataset_name = "quora"
         output_subdir = "quora"
     else:

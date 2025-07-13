@@ -65,8 +65,20 @@ def fusion_offline_eval():
         "P@10" : round(precision_at_k(qrels, predictions, 10), 4),
         "R@100": round(recall_at_k(qrels, predictions, 100), 4)
     }
+     # 5) حفظ النتائج في ملف JSON
+    out_dir = "evaluation_results"
+    os.makedirs(out_dir, exist_ok=True)
+    metrics_path = os.path.join(out_dir, f"hybrid_metrics_{dataset_id}.json")
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
 
-    return jsonify({"message":"Fusion evaluation complete","metrics":metrics})
+    # 6) إرجاع الاستجابة
+    return jsonify({
+        "message"     : "Fusion evaluation complete",
+        "metrics"     : metrics,
+        "metrics_file": metrics_path
+    })
+
 
 # from flask import Blueprint, request, jsonify
 # from app.database.models import get_documents, get_queries_from_qrels, get_qrels

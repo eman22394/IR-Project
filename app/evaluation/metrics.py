@@ -9,8 +9,7 @@ def mean_average_precision(qrels, predictions, scores):
             continue
 
         y_true = [1 if doc in rel_docs else 0 for doc in docs]
-        y_score = scores.get(qid, [1]*len(docs))  # ← لازم تعطي السكور الحقيقي
-
+        y_score = scores.get(qid, [1]*len(docs)) 
         if sum(y_true) == 0:
             continue
 

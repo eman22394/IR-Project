@@ -1,71 +1,75 @@
 from flask import Blueprint, request, jsonify
 from sklearn.metrics.pairwise import cosine_similarity
-import joblib
-import os
-import requests
-from app.database.models import get_documents
+import joblib, os, json, requests, logging
 from app.services.tfidf_service.utils import calculate_query_tfidf
+from app.services.bm25_service.offline.build_bm25 import load_inverted_index
 
-bp = Blueprint('tfidf_online', __name__, url_prefix='/tfidf')
+bp = Blueprint("tfidf_online", __name__, url_prefix="/tfidf")
 
-@bp.route('/match_query', methods=['POST'])
+@bp.route("/match_query", methods=["POST"])
 def match_user_query():
     try:
-        data = request.json
-        dataset_id = data.get('dataset_id')
-        query_text = data.get('text')
+        data = request.get_json(silent=True) or {}
+        dataset_id = int(data.get("dataset_id", -1))
+        query_text = data.get("text", "").strip()
 
-        if not dataset_id or not query_text:
-            return jsonify({"error": "Missing 'dataset_id' or 'text'"}), 400
+        if dataset_id < 0 or not query_text:
+            return jsonify(error="Missing 'dataset_id' or 'text'"), 400
 
-        # 1. إرسال نص الاستعلام إلى سيرفس المعالجة
-        preprocess_url = "http://127.0.0.1:5000/preprocess/query"
-        response = requests.post(preprocess_url, json={"text": query_text})
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to preprocess query", "details": response.text}), 500
+        # ------------------- 1. المعالجة المسبقة -------------------
+        resp = requests.post("http://127.0.0.1:5000/preprocess/query",
+                             json={"text": query_text}, timeout=10)
+        if resp.status_code != 200:
+            return jsonify(error="Preprocess service failed",
+                           details=resp.text), 502
 
-        tokens = response.json().get("tokens")
+        tokens = resp.json().get("tokens") or []
         if not tokens:
-            return jsonify({"error": "No tokens returned from preprocess"}), 500
+            return jsonify(error="Preprocess returned empty tokens"), 500
 
-        # 2. تحميل TF-IDF ومصفوفة المستندات
-        docs_tfidf_path = f"data/tfidf/documents_{dataset_id}/tfidf_matrix.pkl"
-        vectorizer_path = f"data/tfidf/documents_{dataset_id}/vectorizer.pkl"
+        # ------------------- 2. تحميل بيانات الوثائق -------------------
+        inverted_index = load_inverted_index(dataset_id)
+        if not inverted_index or "documents" not in inverted_index:
+            return jsonify(error="Inverted index not found or invalid"), 500
 
-        if not os.path.exists(docs_tfidf_path) or not os.path.exists(vectorizer_path):
-            return jsonify({"error": "TF-IDF model not found for this dataset_id"}), 404
+        doc_ids_path = f"data/tfidf/documents_{dataset_id}/doc_ids.json"
+        if not os.path.isfile(doc_ids_path):
+            return jsonify(error="doc_ids file not found"), 500
 
-        docs_tfidf = joblib.load(docs_tfidf_path)
+        with open(doc_ids_path, encoding="utf-8") as f:
+            doc_ids = json.load(f)
+
+        doc_texts = {int(i): inverted_index["documents"][i] for i in doc_ids}
+
+        # ------------------- 3. تحميل ملفات TF-IDF -------------------
+        tfidf_base_path = f"data/tfidf/documents_{dataset_id}"
+        tfidf_matrix_path = os.path.join(tfidf_base_path, "tfidf_matrix.pkl")
+        vectorizer_path = os.path.join(tfidf_base_path, "vectorizer.pkl")
+
+        if not os.path.isfile(tfidf_matrix_path) or not os.path.isfile(vectorizer_path):
+            return jsonify(error="TF-IDF model files not found"), 404
+
+        tfidf_matrix = joblib.load(tfidf_matrix_path)
         vectorizer = joblib.load(vectorizer_path)
 
-        # 3. جلب المستندات من قاعدة البيانات مع النص
-        documents = get_documents(dataset_id)  # [(doc_id, text), ...]
-        doc_ids = [doc[0] for doc in documents]
-        doc_texts = {doc[0]: doc[1] for doc in documents}
+        # ------------------- 4. تحويل الاستعلام إلى TF-IDF -------------------
+        query_vector = calculate_query_tfidf({0: tokens}, vectorizer)
 
-        # 4. تحويل التوكنز إلى الشكل المطلوب لـ TF-IDF
-        query_dict = {0: tokens}
-        query_vector = calculate_query_tfidf(query_dict, vectorizer)
-
-
-        # 5. حساب التشابه
-        similarities = cosine_similarity(docs_tfidf, query_vector).flatten()
+        # ------------------- 5. حساب التشابه -------------------
+        similarities = cosine_similarity(tfidf_matrix, query_vector).ravel()
         top_indices = similarities.argsort()[::-1][:10]
 
-        # 6. إعداد النتائج مع نصوص المستندات
-        results = [
-            {
-                "doc_id": int(doc_ids[idx]),
+        results = []
+        for idx in top_indices:
+            doc_id = int(doc_ids[idx])
+            results.append({
+                "doc_id": doc_id,
                 "score": float(similarities[idx]),
-                "text": doc_texts[doc_ids[idx]]
-            }
-            for idx in top_indices
-        ]
+                "text": doc_texts.get(doc_id, "")
+            })
 
-        return jsonify({
-            "query_tokens": tokens,
-            "top_matches": results
-        })
+        return jsonify(query_tokens=tokens, top_matches=results)
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logging.exception("Error in /tfidf/match_query")
+        return jsonify(error=str(e)), 500

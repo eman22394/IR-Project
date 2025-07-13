@@ -9,7 +9,7 @@ def build_index():
     data = request.get_json()
     dataset_id = data.get("dataset_id")
 
-    if dataset_id not in [1, 2]:
+    if dataset_id not in [1, 18]:
         return jsonify({"error": "❌ dataset_id غير مدعوم. فقط 1 (antique) أو 18 (quora)"}), 400
 
     result = run_index_builder(dataset_id)

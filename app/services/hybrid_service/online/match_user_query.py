@@ -1,12 +1,11 @@
+# file: app/services/hybrid_service/endpoints.py
 from flask import Blueprint, request, jsonify
-import joblib
-import os
-import numpy as np
-import requests
+import joblib, os, numpy as np, requests
 from sklearn.metrics.pairwise import cosine_similarity
 from app.database.models import get_documents
 
 bp = Blueprint('hybrid_query', __name__, url_prefix='/hybrid')
+
 @bp.route("/match_query", methods=["POST"])
 def fusion_match_query():
     try:
@@ -17,9 +16,7 @@ def fusion_match_query():
         k_recall    = int(data.get("k_recall", 1000))
         top_k       = int(data.get("top_k", 10))
 
-        print(f"[DEBUG] dataset_id: {dataset_id}")
-        print(f"[DEBUG] query_text: {query_text}")
-        print(f"[DEBUG] alpha: {alpha}, k_recall: {k_recall}, top_k: {top_k}")
+        print(f"[DEBUG] dataset_id={dataset_id} | alpha={alpha} | k={k_recall}/{top_k}")
 
         if not dataset_id or not query_text:
             return jsonify({"error": "Missing 'dataset_id' or 'text'"}), 400
@@ -32,70 +29,58 @@ def fusion_match_query():
         doc_ids     = list(bert_docs.keys())
         bert_matrix = np.array([bert_docs[d] for d in doc_ids], dtype=np.float32)
 
-        print(f"[DEBUG] Loaded TF-IDF docs shape: {tfidf_docs.shape}")
-        print(f"[DEBUG] Loaded BERT docs count: {len(doc_ids)}")
-        print(f"[DEBUG] TF-IDF vocab size: {len(tfidf_vec.vocabulary_)}")
-
-        # --- تنظيف الاستعلام & tokens ---
-        prep = requests.post("http://127.0.0.1:5000/preprocess/query", json={
-            "dataset_id" : dataset_id,
-            "text": query_text })
-        print(f"[DEBUG] Preprocess response status: {prep.status_code}")
+        # --- 1) نأخذ tokens من preprocess ---
+        prep = requests.post("http://127.0.0.1:5000/preprocess/query",
+                             json={"text": query_text})
         if prep.status_code != 200:
             return jsonify({"error": "Preprocess failed"}), 500
 
         tokens = prep.json().get("tokens", [])
-        print(f"[DEBUG] Tokens after preprocessing: {tokens}")
+        print("[DEBUG] tokens:", tokens)
         if not tokens:
             return jsonify({"error": "Empty query after preprocessing"}), 400
 
-        # --- تمثيل TF‑IDF للاستعلام ---
+        # --- 2) تمثيل TF‑IDF للاستعلام ---
         q_tfidf = tfidf_vec.transform([" ".join(tokens)]).astype(np.float32)
-        print(f"[DEBUG] TF-IDF query vector shape: {q_tfidf.shape}, nnz: {q_tfidf.nnz}")
+        print("[DEBUG] TF-IDF nnz:", q_tfidf.nnz)
         if q_tfidf.nnz == 0:
-            return jsonify({"error": "No TF‑IDF terms in vocabulary for query"}), 400
+            return jsonify({"error": "No TF‑IDF terms in vocabulary"}), 400
 
-        # --- تمثيل BERT للاستعلام ---
-        bert_resp = requests.post("http://127.0.0.1:5000/preprocess/query", json={
-            "dataset_id" : dataset_id,
-            "text": query_text})
-        print(f"[DEBUG] BERT embed response status: {bert_resp.status_code}")
+        # --- 3) تمثيل BERT للاستعلام ---
+        bert_resp = requests.post("http://127.0.0.1:5000/embed/query",
+                                  json={"tokens": tokens})
         if bert_resp.status_code != 200:
             return jsonify({"error": "BERT embed failed"}), 500
 
-        q_bert = np.array(bert_resp.json().get("vector", []), dtype=np.float32).reshape(1, -1)
-        print(f"[DEBUG] BERT query vector shape: {q_bert.shape}")
+        q_bert = np.array(bert_resp.json().get("vector", []),
+                          dtype=np.float32).reshape(1, -1)
+        print("[DEBUG] BERT vector dim:", q_bert.shape)
 
-        # --- مرحلة الاسترجاع TF‑IDF ---
-        tf_scores = cosine_similarity(tfidf_docs, q_tfidf).flatten()
-        print(f"[DEBUG] TF-IDF scores length: {len(tf_scores)}")
-        tf_top_idx = tf_scores.argsort()[::-1][:k_recall]
+        # --- 4) استرجاع top‑k TF‑IDF ---
+        tf_scores   = cosine_similarity(tfidf_docs, q_tfidf).flatten()
+        tf_top_idx  = tf_scores.argsort()[::-1][:k_recall]
 
-        # --- تشابه BERT على المرشَّحين ---
+        # --- 5) تشابه BERT على المرشحين ---
         bert_scores = cosine_similarity(bert_matrix[tf_top_idx], q_bert).flatten()
-        print(f"[DEBUG] BERT scores length: {len(bert_scores)}")
 
-        # --- الدمج ---
-        fused = alpha * tf_scores[tf_top_idx] + (1 - alpha) * bert_scores
+        # --- 6) الدمج والترتيب ---
+        fused   = alpha * tf_scores[tf_top_idx] + (1-alpha) * bert_scores
+        order   = fused.argsort()[::-1][:top_k]
+        final_i = [tf_top_idx[j] for j in order]
 
-        # --- ترتيب نهائي ---
-        order = fused.argsort()[::-1][:top_k]
-        final_idx = [tf_top_idx[j] for j in order]
-
-        # --- جلب نصوص الوثائق ---
-        doc_text_map = {str(d[0]): d[1] for d in get_documents(dataset_id)}
-
-        results = [{
+        # --- 7) إعداد النتائج ---
+        doc_text = {str(d[0]): d[1] for d in get_documents(dataset_id)}
+        results  = [{
             "doc_id": doc_ids[i],
             "score" : float(fused[order[idx]]),
-            "text"  : doc_text_map.get(doc_ids[i], "")
-        } for idx, i in enumerate(final_idx)]
+            "text"  : doc_text.get(doc_ids[i], "")
+        } for idx, i in enumerate(final_i)]
 
-        print(f"[DEBUG] Returning {len(results)} results")
+        print("[DEBUG] returning", len(results), "docs")
         return jsonify({"query_tokens": tokens, "top_matches": results})
 
     except Exception as e:
-        print(f"[ERROR] Exception: {str(e)}")
+        print("[ERROR]", e)
         return jsonify({"error": str(e)}), 500
 
 # from flask import Blueprint, request, jsonify

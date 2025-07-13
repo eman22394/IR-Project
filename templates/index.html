@@ -188,6 +188,10 @@
                 <input class="form-check-input" type="radio" name="mode" id="modeuse_vector_store" value="use_vector_store" />
                 <label class="form-check-label" for="modeuse_vector_store"> Use Vector Store</label>
             </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode" id="mode_BM25" value="use_mode_BM25" />
+                <label class="form-check-label" for="mode_BM25"> BM25 </label>
+            </div>
         </div>
 
         <button type="submit" form="searchForm" class="btn btn-primary w-100 mt-3">
@@ -215,10 +219,10 @@
                     </svg>
                     Enter your query:
                 </label>
-                <textarea id="queryText" class="form-control" rows="4" placeholder="Type your search query here..." required></textarea>
+                <textarea id="queryText" class="form-control" rows="1" placeholder="Type your search query here..." required></textarea>
             </div>
 
-            <hr />
+            <!-- <hr /> -->
 
             <h4>Search Results</h4>
             <ul id="resultsList" class="list-group mt-3" style="max-height: 500px; overflow-y: auto;"></ul>
@@ -281,6 +285,8 @@
                 else if (mode === 'bert') endpoint = '/mbert/match_query';
                 else if (mode === 'hybrid') endpoint = '/hybrid/match_query';
                 else if (mode === 'use_vector_store') endpoint = '/vector_store/match_query';
+                else if (mode === 'use_mode_BM25') endpoint = '/bm25/search';
+
 
                 const response = await fetch(endpoint, {
                     method: 'POST',

@@ -3,7 +3,6 @@ from flask import Blueprint, request, jsonify
 import os, json, joblib
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-
 from app.database.models import (
     get_documents,
     get_queries_from_qrels,
@@ -21,20 +20,11 @@ bp = Blueprint("bert_eval", __name__, url_prefix="/bert_eval")
 @bp.route("/offline", methods=["POST"])
 def bert_offline_eval():
     try:
-        # ------------------------------------------------------------------ #
-        # 0) بيانات الطلب
-        # ------------------------------------------------------------------ #
         data        = request.json
         dataset_id  = data.get("dataset_id")
         if not dataset_id:
             return jsonify({"error": "Missing dataset_id"}), 400
 
-        print(f"\n🚀  BERT Eval | dataset={dataset_id}")
-        print("——————————————————————————")
-
-        # ------------------------------------------------------------------ #
-        # 1) جلب البيانات من القاعدة
-        # ------------------------------------------------------------------ #
         print("📥 Loading documents, queries, qrels …")
         docs        = get_documents(dataset_id)
         queries     = get_queries_from_qrels(dataset_id)
@@ -53,10 +43,8 @@ def bert_offline_eval():
                 qrels.setdefault(str(qid), {})[str(doc_id)] = rel
         print(f"   • qrels pairs: {len(qrels_raw):,}")
 
-        # ------------------------------------------------------------------ #
-        # 2) تحميل التمثيلات الشعاعية
-        # ------------------------------------------------------------------ #
-        vec_dir   = f"data/mbert"
+       
+        vec_dir   = f"data/bert"
         doc_vecs_path   = f"{vec_dir}/documents_{dataset_id}/doc_vectors.pkl"
         query_vecs_path = f"{vec_dir}/queries_{dataset_id}/doc_vectors.pkl"
 
